@@ -35,10 +35,10 @@ Functions in the `hbfm` package require discrete scRNA-seq gene expression data,
 
 The first step in constructing a gene co-expression matrix with the `hbfm` package is to implement a stochastic EM algorithm with the `stoc.em` function to obtain a "good" set of initial starting values for the MCMC sampler. The `stoc.em` function requires two inputs:
 
-* `Y` - matrix or data.frame of gene expression count where the rows correspond to genes and columns correspond to cells.
+* `Y` - matrix or data.frame of gene expression count where the rows correspond to genes and columns correspond to cells; Y must contain intergets and have row names
 * `Fac` - the number of latent factors to consider in the model
 
-The number of latent factors `Fac` is unknown, but should be less than the number of genes (*G*) in the dataset. Here, we will consider 5 factors in our example.
+The number of latent factors `Fac` is unknown, but should be less than the number of genes (*G*) in the dataset. Here, we will consider 5 factors in our example because our dataset only contains *G = 10* genes. However, for datasets with larger numbers of genes, we typically recommend choosing a value for `Fac` that is greater than 10 (e.g., 15, 20, or 25).
 
 The other main parameters of the `stoc.em` function relate to the number of iterations in the stochastic EM algorithm. These parameters and their default values are listed below:
 

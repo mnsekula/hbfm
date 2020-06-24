@@ -13,7 +13,7 @@
 #' for use in \code{hbfm.fit}.
 #'
 #' @param Y data.frame or matrix of gene expression counts where the rows correspond to genes and
-#'          columns correspond to cells; Y must contain integers
+#'          columns correspond to cells; Y must contain integers and have row names
 #' @param Fac number of factors to consider in the model; only a single number is accepted
 #' @param M.stoc total number of stochastic EM iterations
 #' @param M.int initial number of MCMC draws before maximization
@@ -36,7 +36,7 @@
 #'   \item{lambda}{: initial lambda parameter matrix for input into \code{hbfm.fit}}
 #'   \item{phi}{: initial phi parameter vector for input into \code{hbfm.fit}}
 #'   \item{h1}{: location hyperparameter of lognormal prior for phi to input into \code{hbfm.fit}}
-#'   \item{h1}{: scale hyperparameter of lognormal prior for phi to input into \code{hbfm.fit}}
+#'   \item{h2}{: scale hyperparameter of lognormal prior for phi to input into \code{hbfm.fit}}
 #'   \item{mll}{: calculated marginal log-likelihoods at given iterations; used for convergence diagnostics}
 #' }
 #' 
@@ -210,20 +210,18 @@ stoc.em <- function(Y, Fac, M.stoc = 2000, M.int = 100, M.eval = 200, M.ll.seq =
     if(m %in% max_iter){
       for(f in sample(Fac)){
         # optimize function
-        phi[f] <- optimize(phi_log_lik, c(0.01, 10), maximum = TRUE, tol=0.01, p_cand = phi, fac=f, alpha=alpha, beta=beta, lambda =lambda, h1=h1, h2=h2, Y=Y)$maximum
+        psi_f <- lPOWa(a=alpha[,-f], tl=t(lambda[,-f]), p = phi[-f])
+        phi[f] <- optimize(phi_log_lik, c(0.01, 10), maximum = TRUE, tol=0.01, psi_f = psi_f, fac=f, alpha=alpha, beta=beta, 
+                           lambda =lambda, h1=h1, h2=h2, Y=Y, N=N, G=G)$maximum
       }
     }else{
       # MH sampling
       for(f in sample(Fac)){
         if(num_ind[f] > 0){ #Only use cand phi if factor is active
           cand <- rlnorm(1,log(phi[f]), phi.scale)
-          phi_cand <- phi
-          phi_cand[f] <- cand
-          mu_cand <- beta*t(lPOWa(a=alpha,tl=t(lambda),p=phi_cand))
-          mu <- beta*t(lPOWa(a=alpha,tl=t(lambda),p=phi))
-          
-          loglik_cand <- sum(dpois(Y,mu_cand,log=TRUE)) + sum(dlnorm(lambda[,f],0,sqrt(cand),log=TRUE)) + dlnorm(cand,h1,sqrt(h2),log=TRUE)
-          loglik_phi <- sum(dpois(Y,mu,log=TRUE)) + sum(dlnorm(lambda[,f],0,sqrt(phi[f]),log=TRUE)) + dlnorm(phi[f],h1,sqrt(h2),log=TRUE)
+          psi_f <- lPOWa(a=alpha[,-f], tl=t(lambda[,-f]), p = phi[-f])
+          loglik_cand <- phi_log_lik(cand = cand, psi_f = psi_f, fac=f, alpha=alpha, beta=beta, lambda =lambda, h1=h1, h2=h2, Y=Y, N=N, G=G)
+          loglik_phi <- phi_log_lik(cand = phi[f], psi_f = psi_f, fac=f, alpha=alpha, beta=beta, lambda =lambda, h1=h1, h2=h2, Y=Y, N=N, G=G)
           MH_logprob <- loglik_cand + dlnorm(phi[f],log(cand),phi.scale,log=TRUE) - loglik_phi - dlnorm(cand,log(phi[f]),phi.scale,log=TRUE)
           if(runif(1) < exp(MH_logprob)){
             phi[f] <- cand
@@ -309,7 +307,7 @@ stoc.em <- function(Y, Fac, M.stoc = 2000, M.int = 100, M.eval = 200, M.ll.seq =
 #'   \item{lambda}{: samples of lambda parameters; included only when \code{par.samp = TRUE}}
 #'   \item{phi}{: samples of phi parameters; included only when \code{par.samp = TRUE}}
 #'   \item{h1}{: samples of location hyperparameter of lognormal prior for phi; included only when \code{par.samp = TRUE}}
-#'   \item{h1}{: samples of scale hyperparameter of lognormal prior for phi; included only when \code{par.samp = TRUE}}
+#'   \item{h2}{: samples of scale hyperparameter of lognormal prior for phi; included only when \code{par.samp = TRUE}}
 #'   }
 #' }
 #' 
@@ -454,13 +452,9 @@ hbfm.fit <- function(stoc.em.param, M = 4000, M.save = 1000, M.ll.seq = 10, H=50
     for(f in sample(Fac)){
       if(num_ind[f] > 0){ #Only use cand phi if factor is active
         cand <- rlnorm(1,log(phi[f]), phi.scale)
-        phi_cand <- phi
-        phi_cand[f] <- cand
-        mu_cand <- beta*t(lPOWa(a=alpha,tl=t(lambda),p=phi_cand))
-        mu <- beta*t(lPOWa(a=alpha,tl=t(lambda),p=phi))
-        
-        loglik_cand <- sum(dpois(Y,mu_cand,log=TRUE)) + sum(dlnorm(lambda[,f],0,sqrt(cand),log=TRUE)) + dlnorm(cand,h1,sqrt(h2),log=TRUE)
-        loglik_phi <- sum(dpois(Y,mu,log=TRUE)) + sum(dlnorm(lambda[,f],0,sqrt(phi[f]),log=TRUE)) + dlnorm(phi[f],h1,sqrt(h2),log=TRUE)
+        psi_f <- lPOWa(a=alpha[,-f], tl=t(lambda[,-f]), p = phi[-f])
+        loglik_cand <- phi_log_lik(cand = cand, psi_f = psi_f, fac=f, alpha=alpha, beta=beta, lambda =lambda, h1=h1, h2=h2, Y=Y, N=N, G=G)
+        loglik_phi <- phi_log_lik(cand = phi[f], psi_f = psi_f, fac=f, alpha=alpha, beta=beta, lambda =lambda, h1=h1, h2=h2, Y=Y, N=N, G=G)
         MH_logprob <- loglik_cand + dlnorm(phi[f],log(cand),phi.scale,log=TRUE) - loglik_phi - dlnorm(cand,log(phi[f]),phi.scale,log=TRUE)
         if(runif(1) < exp(MH_logprob)){
           phi[f] <- cand
@@ -659,6 +653,63 @@ hbfm.DIC <- function(hbfm.list){
 
 
 
+
+
+#' Rank hbfm chains
+#'
+#' Function to rank the MCMC chains by average marginal log-likelihood.
+#'
+#' @param hbfm.list list where each element contains an hbfm.fit-class object; each element of the list contains an object from a different MCMC chain
+#'
+#' @return data.frame that orders the input hbfm.fit-class objects based on average marginal log-likelihood; the numbers in the chain.num column
+#' represent the elements (chains) from hbfm.list
+#' 
+#' 
+#' @details 
+#' The \code{rank.chains} function is used to rank the input chains based on average marginal log-likelihood in order to identify low performing chains.
+#'  
+#' 
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' ## Load dataset
+#' data(gene.mat)
+#' 
+#' ## Run stochastic EM first
+#' ## Consider F=5 factors
+#' fit1 <- stoc.em(Y=gene.mat, Fac = 5)
+#' 
+#' ## Run MCMC sampler with initial parameter values from stoc.em
+#' fit.res1 <- hbfm.fit(fit1)
+#' 
+#' ## Run a second chain
+#' fit2 <- stoc.em(Y=gene.mat, Fac = 5, seed = 234)
+#' fit.res2 <- hbfm.fit(fit2, seed = 234)
+#' 
+#' ## Obtain estimated gene-gene correlations from MCMC samples
+#' rank.chains(list(fit.res1, fit.res2))
+#' 
+#' }
+#' 
+
+
+rank.chains <- function(hbfm.list){
+  mll.avg <- numeric()
+  for(l in 1:length(hbfm.list)){
+    M <- length(hbfm.list[[l]]$samples$mll)
+    M.save <- dim(hbfm.list[[l]]$samples$corr)[3]
+    mll.avg <- c(mll.avg, mean(hbfm.list[[l]]$samples$mll[(M-M.save+1):M]))
+  }
+  c.ranks <- order(mll.avg, decreasing = TRUE)
+  rankings <- data.frame(chain.num = c.ranks, avg.mll = mll.avg[c.ranks])
+  return(rankings)
+}
+
+
+
+
+
 #####################################
 ## S3 methods
 #####################################
@@ -787,12 +838,12 @@ p.approx <- function(x){
 ## Internal MCMC functions
 #####################################
 
-#' Calculate posterior log-likelihood for phi candidate value
+#' Calculate proportional posterior log-likelihood for phi candidate value
 #'
 #' Used for phi optimization step in stoc.em
 #'
 #' @param cand value to replace in phi vector
-#' @param p_cand vector of all phi values
+#' @param psi_f results from lPOWa function
 #' @param fac factor number to evaluate
 #' @param alpha current alpha estimates
 #' @param beta current beta estimates
@@ -800,16 +851,20 @@ p.approx <- function(x){
 #' @param h1 current h1 (hyperparameter) estimate
 #' @param h2 current h2 (hyperparameter) estimate
 #' @param Y matrix of gene expression counts
+#' @param N number of cells
+#' @param G number of genes
 #'
 #' @return
-#' Posterior log-likelihood for phi candidate value
+#' Proportional posterior log-likelihood for phi candidate value
 #' @export
 #' @noRd
 
-phi_log_lik <- function(cand, p_cand, fac, alpha, beta, lambda, h1, h2, Y){
-  p_cand[fac] <- cand
-  mu_cand <- beta*t(lPOWa(a=alpha,tl=t(lambda),p=p_cand))
-  loglik_cand <- sum(dpois(Y,mu_cand,log=TRUE)) + sum(dlnorm(lambda[,fac],0,sqrt(cand),log=TRUE)) + dlnorm(cand,h1,sqrt(h2),log=TRUE)
+phi_log_lik <- function(cand, psi_f, fac, alpha, beta, lambda, h1, h2, Y, N, G){
+  loglik_cand <- -cand/2*sum(abs(alpha[,fac])*Y)-
+    sum(beta*exp(-cand/2*abs(alpha[,fac]))*colSums(matrix(lambda[,fac]^rep(alpha[,fac],each = N), nrow = N, ncol = G)*psi_f))+
+    (-(N/2+1))*log(cand) +
+    -1/cand*sum(log(lambda[,fac])^2)/2 -
+    ((log(cand)-h1)^2)/(2*h2)
   return(loglik_cand)
 }
 

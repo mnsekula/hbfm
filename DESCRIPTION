@@ -1,8 +1,8 @@
 Package: hbfm
 Type: Package
 Title: Generating gene co-expression matrices from scRNA-seq data
-Version: 0.0.1
-Date: 2019-09-30
+Version: 0.1.0
+Date: 2020-06-23
 Author: Michael Sekula
 Maintainer: Michael Sekula <michael.sekula@louisville.edu>
 Description: R package with functions that implement the methodology defined in the "A sparse Bayesian factor model for the construction of gene co-expression networks from single-cell RNA sequencing count data" manuscript.

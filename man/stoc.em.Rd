@@ -9,7 +9,7 @@ stoc.em(Y, Fac, M.stoc = 2000, M.int = 100, M.eval = 200,
 }
 \arguments{
 \item{Y}{data.frame or matrix of gene expression counts where the rows correspond to genes and
-columns correspond to cells; Y must contain integers}
+columns correspond to cells; Y must contain integers and have row names}
 
 \item{Fac}{number of factors to consider in the model; only a single number is accepted}
 
@@ -41,7 +41,7 @@ hbfm.par-class object containing:
   \item{lambda}{: initial lambda parameter matrix for input into \code{hbfm.fit}}
   \item{phi}{: initial phi parameter vector for input into \code{hbfm.fit}}
   \item{h1}{: location hyperparameter of lognormal prior for phi to input into \code{hbfm.fit}}
-  \item{h1}{: scale hyperparameter of lognormal prior for phi to input into \code{hbfm.fit}}
+  \item{h2}{: scale hyperparameter of lognormal prior for phi to input into \code{hbfm.fit}}
   \item{mll}{: calculated marginal log-likelihoods at given iterations; used for convergence diagnostics}
 }
 }

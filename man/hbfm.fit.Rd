@@ -47,7 +47,7 @@ hbfm.fit-class object containing:
   \item{lambda}{: samples of lambda parameters; included only when \code{par.samp = TRUE}}
   \item{phi}{: samples of phi parameters; included only when \code{par.samp = TRUE}}
   \item{h1}{: samples of location hyperparameter of lognormal prior for phi; included only when \code{par.samp = TRUE}}
-  \item{h1}{: samples of scale hyperparameter of lognormal prior for phi; included only when \code{par.samp = TRUE}}
+  \item{h2}{: samples of scale hyperparameter of lognormal prior for phi; included only when \code{par.samp = TRUE}}
   }
 }
 }
